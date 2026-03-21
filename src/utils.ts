@@ -6,10 +6,13 @@ import type {
 import type { RuleContext } from "@typescript-eslint/utils/ts-eslint";
 import type { Rule } from "eslint";
 
-const hasDocs = new Set(["sort-destructure-keys-by-type"]);
+const hasDocs = new Set([
+  "no-classname-prop-in-styled-components",
+  "no-classname-prop-on-styled-components",
+]);
 
 const blobUrl =
-  "https://github.com/nirtamir2/eslint-plugin-sort-destructure-keys-typescript/blob/main/src/rules/";
+  "https://github.com/nirtamir2/eslint-plugin-className-components/blob/main/src/rules/";
 
 export interface RuleModule<T extends ReadonlyArray<unknown>>
   extends Rule.RuleModule {
@@ -59,7 +62,7 @@ function createRule<
   TMessageIds extends string,
 >({
   create,
-  defaultOptions,
+  defaultOptions = [] as unknown as TOptions,
   meta,
 }: Readonly<RuleWithMeta<TOptions, TMessageIds>>): RuleModule<TOptions> {
   return {
@@ -93,11 +96,3 @@ export const createEslintRule = RuleCreator((ruleName) =>
 }: Readonly<
   RuleWithMetaAndName<TOptions, TMessageIds>
 >) => RuleModule<TOptions>;
-
-const warned = new Set<string>();
-
-export function warnOnce(message: string): void {
-  if (warned.has(message)) return;
-  warned.add(message);
-  console.warn(message);
-}

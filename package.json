@@ -1,19 +1,25 @@
 {
-  "name": "eslint-plugin-component-api",
+  "name": "eslint-plugin-classname-components",
   "type": "module",
   "version": "0.3.0",
   "packageManager": "pnpm@10.4.0",
-  "description": "ESLint plugin to sort destructure keys by typescript type order",
+  "description": "ESLint rules for React components that forbid exposing or passing className on internally styled components.",
   "author": "Nir Tamir <nirtamir2@gmail.com>",
   "license": "MIT",
   "funding": "https://github.com/sponsors/nirtamir2",
-  "homepage": "https://github.com/nirtamir2/eslint-plugin-sort-destructure-keys-typescript#readme",
+  "homepage": "https://github.com/nirtamir2/eslint-plugin-className-components#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nirtamir2/eslint-plugin-sort-destructure-keys-typescript.git"
+    "url": "git+https://github.com/nirtamir2/eslint-plugin-className-components.git"
   },
-  "bugs": "https://github.com/nirtamir2/eslint-plugin-sort-destructure-keys-typescript/issues",
-  "keywords": [],
+  "bugs": "https://github.com/nirtamir2/eslint-plugin-className-components/issues",
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "react",
+    "tailwindcss",
+    "typescript"
+  ],
   "sideEffects": false,
   "exports": {
     ".": {
@@ -67,10 +73,11 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "eslint": "*"
+    "eslint": "*",
+    "typescript": ">=5"
   },
   "dependencies": {
-    "@typescript-eslint/type-utils": "^8.57.1"
+    "@typescript-eslint/utils": "^8.57.1"
   },
   "devDependencies": {
     "@nirtamir2/eslint-config": "0.2.4",
@@ -79,7 +86,6 @@
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@typescript-eslint/typescript-estree": "^8.57.1",
     "@typescript-eslint/utils": "^8.57.1",
     "bumpp": "^11.0.1",
     "ci-info": "^4.4.0",

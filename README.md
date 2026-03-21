@@ -1,29 +1,43 @@
-# eslint-plugin-sort-destructure-keys-typescript
+# eslint-plugin-className-components
 
 [![npm version][npm-version-src]][npm-version-href]
 [![npm downloads][npm-downloads-src]][npm-downloads-href]
 
-ESLint plugin rules to sort destructure keys, JSX attributes, and object properties by TypeScript type order.
-The plugin requires `parserServices` to be generated.
-You must therefore provide a value for the `parserOptions.project` property for `@typescript-eslint/parser`.
+ESLint rules for React components that forbid exposing or passing `className`
+on internally styled components.
 
-![demo-combined.gif](docs/demo-combined.gif)
+The plugin is built for teams that want this contract:
 
-![sort-object-properties-by-type.png](docs/sort-object-properties-by-type.png)
+- styled components should not expose `className`
+- styled components should not accept `className` at the JSX call site
+- styling differences should be expressed through meaningful variant props instead
 
-[Rules List](./src/rules)
+The rules require TypeScript parser services. Configure
+`@typescript-eslint/parser` with `parserOptions.project`.
+
+Note: the npm package/import path stays lowercase as
+`eslint-plugin-classname-components` because npm package names cannot contain
+uppercase letters.
+
+## Rules
+
+- `no-classname-prop-in-styled-components`
+  Flags component definitions that style themselves internally and still expose a
+  `className` prop.
+- `no-classname-prop-on-styled-components`
+  Flags JSX usages that pass `className` to internally styled components.
 
 ## Configuration
 
 ```shell
-pnpm add -D eslint-plugin-sort-destructure-keys-typescript
+pnpm add -D eslint-plugin-classname-components @typescript-eslint/parser typescript
 ```
 
 Add to your `eslint.config.js`
 
 ```js
 import typescriptEslintParser from "@typescript-eslint/parser";
-import sortDestructureKeysConfig from "eslint-plugin-sort-destructure-keys-typescript/config";
+import componentApiConfig from "eslint-plugin-classname-components/config";
 
 export default [
   // other settings...
@@ -37,9 +51,31 @@ export default [
       },
     },
   },
-  sortDestructureKeysConfig(),
+  componentApiConfig({ strict: true }),
 ];
 ```
+
+## What Counts As Internal Styling
+
+The rules treat a component as internally styled when it renders `className`
+values derived from internal style signals such as:
+
+- string or template literal class names
+- `clsx(...)`
+- `cva(...)`
+- local identifiers that resolve to those style expressions
+- merge patterns like `clsx("base", className)`
+
+Pure passthrough alone does not count as internal styling:
+
+- `className={props.className}`
+- `className={className}`
+- `{...props}` by itself
+
+## Recommendations
+
+When a component needs styling choices, prefer variant props such as `variant`,
+`size`, or `tone` over external `className` injection.
 
 ## License
 
@@ -47,14 +83,13 @@ export default [
 
 <!-- Badges -->
 
-[npm-version-src]: https://img.shields.io/npm/v/eslint-plugin-sort-destructure-keys-typescript?style=flat&colorA=080f12&colorB=1fa669
-[npm-version-href]: https://npmjs.com/package/eslint-plugin-sort-destructure-keys-typescript
-[npm-downloads-src]: https://img.shields.io/npm/dm/eslint-plugin-sort-destructure-keys-typescript?style=flat&colorA=080f12&colorB=1fa669
-[npm-downloads-href]: https://npmjs.com/package/eslint-plugin-sort-destructure-keys-typescript
+[npm-version-src]: https://img.shields.io/npm/v/eslint-plugin-classname-components?style=flat&colorA=080f12&colorB=1fa669
+[npm-version-href]: https://npmjs.com/package/eslint-plugin-classname-components
+[npm-downloads-src]: https://img.shields.io/npm/dm/eslint-plugin-classname-components?style=flat&colorA=080f12&colorB=1fa669
+[npm-downloads-href]: https://npmjs.com/package/eslint-plugin-classname-components
 
 ### Thanks
 
 - https://github.com/antfu/eslint-plugin-antfu for a starter project
 - https://github.com/antfu/eslint-plugin-command for a starter project
 - https://github.com/JoshuaKGoldberg/eslint-plugin-package-json for a starter project
-- https://github.com/mthadley/eslint-plugin-sort-destructure-keys - for ordering

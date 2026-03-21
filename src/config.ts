@@ -12,9 +12,8 @@ export default function config(
       [name]: plugin,
     },
     rules: {
-      [`${name}/sort-destructure-keys-by-type`]: ruleSeverity,
-      [`${name}/sort-jsx-attributes-by-type`]: ruleSeverity,
-      [`${name}/sort-object-properties-by-type`]: ruleSeverity,
+      [`${name}/no-classname-prop-in-styled-components`]: ruleSeverity,
+      [`${name}/no-classname-prop-on-styled-components`]: ruleSeverity,
     },
   };
 }

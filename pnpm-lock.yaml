@@ -8,7 +8,7 @@ importers:
 
   .:
     dependencies:
-      '@typescript-eslint/type-utils':
+      '@typescript-eslint/utils':
         specifier: ^8.57.1
         version: 8.57.1(eslint@10.1.0(jiti@2.6.1))(typescript@5.9.3)
     devDependencies:
@@ -30,12 +30,6 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.14)
-      '@typescript-eslint/typescript-estree':
-        specifier: ^8.57.1
-        version: 8.57.1(typescript@5.9.3)
-      '@typescript-eslint/utils':
-        specifier: ^8.57.1
-        version: 8.57.1(eslint@10.1.0(jiti@2.6.1))(typescript@5.9.3)
       bumpp:
         specifier: ^11.0.1
         version: 11.0.1

@@ -1,8 +1,7 @@
 import type { ESLint } from "eslint";
 import { name, version } from "../package.json";
-import sortDestructureKeysByType from "./rules/sort-destructure-keys-by-type";
-import sortJsxAttributesByType from "./rules/sort-jsx-attributes-by-type";
-import sortObjectPropertiesByType from "./rules/sort-object-properties-by-type";
+import noClassnamePropInStyledComponents from "./rules/no-classname-prop-in-styled-components";
+import noClassnamePropOnStyledComponents from "./rules/no-classname-prop-on-styled-components";
 
 export const plugin = {
   meta: {
@@ -11,8 +10,8 @@ export const plugin = {
   },
   // @keep-sorted
   rules: {
-    "sort-destructure-keys-by-type": sortDestructureKeysByType,
-    "sort-jsx-attributes-by-type": sortJsxAttributesByType,
-    "sort-object-properties-by-type": sortObjectPropertiesByType,
+    "no-classname-prop-in-styled-components":
+      noClassnamePropInStyledComponents,
+    "no-classname-prop-on-styled-components": noClassnamePropOnStyledComponents,
   },
 } satisfies ESLint.Plugin;
