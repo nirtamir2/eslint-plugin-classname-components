@@ -7,8 +7,10 @@ import type { RuleContext } from "@typescript-eslint/utils/ts-eslint";
 import type { Rule } from "eslint";
 
 const hasDocs = new Set([
+  "no-classname-prop-merge-in-styled-components",
   "no-classname-prop-in-styled-components",
   "no-classname-prop-on-styled-components",
+  "prefer-static-classname-in-styled-components",
 ]);
 
 const blobUrl =

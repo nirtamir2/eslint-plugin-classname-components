@@ -5,6 +5,7 @@ import ts from "typescript";
 
 type StyleClassification = "internal" | "passthrough" | "unknown";
 const COMPONENT_NAME_REGEX = /^[A-Z]/;
+const CLASSNAME_HELPER_NAMES = new Set(["clsx", "cn"]);
 
 function isInternalLiteralText(text: string): boolean {
   return text.trim().length > 0;
@@ -14,7 +15,10 @@ interface ComponentDefinition {
   declaration: ts.Declaration;
   name: string;
   propsParameter: ts.ParameterDeclaration | undefined;
-  renderFunction: ts.ArrowFunction | ts.FunctionDeclaration | ts.FunctionExpression;
+  renderFunction:
+    | ts.ArrowFunction
+    | ts.FunctionDeclaration
+    | ts.FunctionExpression;
 }
 
 export interface ComponentAnalysis extends ComponentDefinition {
@@ -37,7 +41,10 @@ function unwrapExpression(expression: ts.Expression): ts.Expression {
       current = current.expression;
       continue;
     }
-    if (ts.isTypeAssertionExpression(current) || ts.isNonNullExpression(current)) {
+    if (
+      ts.isTypeAssertionExpression(current) ||
+      ts.isNonNullExpression(current)
+    ) {
       current = current.expression;
       continue;
     }
@@ -55,6 +62,10 @@ function getCallLikeName(expression: ts.Expression): string | undefined {
     return callee.name.text;
   }
   return undefined;
+}
+
+function isClassNameHelperName(name: string | undefined): boolean {
+  return name != null && CLASSNAME_HELPER_NAMES.has(name);
 }
 
 function unwrapComponentInitializer(
@@ -162,9 +173,11 @@ function getComponentDefinition(
       return undefined;
     }
 
-    const hasJsxReturn = collectReturnedExpressions(declaration).some((expression) => {
-      return expressionContainsJsx(expression);
-    });
+    const hasJsxReturn = collectReturnedExpressions(declaration).some(
+      (expression) => {
+        return expressionContainsJsx(expression);
+      },
+    );
     if (!hasJsxReturn) {
       return undefined;
     }
@@ -177,7 +190,10 @@ function getComponentDefinition(
     };
   }
 
-  if (!ts.isVariableDeclaration(declaration) || !ts.isIdentifier(declaration.name)) {
+  if (
+    !ts.isVariableDeclaration(declaration) ||
+    !ts.isIdentifier(declaration.name)
+  ) {
     return undefined;
   }
 
@@ -191,9 +207,11 @@ function getComponentDefinition(
     return undefined;
   }
 
-  const hasJsxReturn = collectReturnedExpressions(renderFunction).some((expression) => {
-    return expressionContainsJsx(expression);
-  });
+  const hasJsxReturn = collectReturnedExpressions(renderFunction).some(
+    (expression) => {
+      return expressionContainsJsx(expression);
+    },
+  );
   if (!hasJsxReturn) {
     return undefined;
   }
@@ -206,7 +224,10 @@ function getComponentDefinition(
   };
 }
 
-function getSymbol(node: ts.Node, checker: ts.TypeChecker): ts.Symbol | undefined {
+function getSymbol(
+  node: ts.Node,
+  checker: ts.TypeChecker,
+): ts.Symbol | undefined {
   const symbol = checker.getSymbolAtLocation(node);
   if (symbol == null) {
     return undefined;
@@ -275,7 +296,9 @@ function hasClassNameBinding(parameter: ts.ParameterDeclaration): boolean {
     if (ts.isOmittedExpression(element)) {
       return false;
     }
-    const propertyName = getPropertyNameText(element.propertyName ?? element.name);
+    const propertyName = getPropertyNameText(
+      element.propertyName ?? element.name,
+    );
     return propertyName === "className";
   });
 }
@@ -285,6 +308,7 @@ function createStyleInspector(
   component: ComponentDefinition,
 ): {
   hasInternalStyle: () => boolean;
+  isClassNamePropExpression: (expression: ts.Expression) => boolean;
 } {
   const classNameSymbols = new Set<ts.Symbol>();
   const propsObjectSymbols = new Set<ts.Symbol>();
@@ -301,11 +325,17 @@ function createStyleInspector(
     if (ts.isObjectBindingPattern(component.propsParameter.name)) {
       for (const element of component.propsParameter.name.elements) {
         if (element.dotDotDotToken != null) {
-          addBindingIdentifierSymbols(element.name, checker, propsObjectSymbols);
+          addBindingIdentifierSymbols(
+            element.name,
+            checker,
+            propsObjectSymbols,
+          );
           continue;
         }
 
-        const propertyName = getPropertyNameText(element.propertyName ?? element.name);
+        const propertyName = getPropertyNameText(
+          element.propertyName ?? element.name,
+        );
         if (propertyName === "className") {
           addBindingIdentifierSymbols(element.name, checker, classNameSymbols);
         }
@@ -345,41 +375,51 @@ function createStyleInspector(
     return false;
   }
 
-  const {body} = component.renderFunction;
+  const { body } = component.renderFunction;
   if (body != null) {
     visitNode(
       body,
       (current) => {
-      if (!ts.isVariableDeclaration(current) || current.initializer == null) {
-        return;
-      }
+        if (!ts.isVariableDeclaration(current) || current.initializer == null) {
+          return;
+        }
 
-      if (ts.isIdentifier(current.name)) {
-        if (isPropsObjectExpression(current.initializer)) {
-          const symbol = getSymbol(current.name, checker);
-          if (symbol != null) {
-            propsObjectSymbols.add(symbol);
+        if (ts.isIdentifier(current.name)) {
+          if (isPropsObjectExpression(current.initializer)) {
+            const symbol = getSymbol(current.name, checker);
+            if (symbol != null) {
+              propsObjectSymbols.add(symbol);
+            }
+          }
+          return;
+        }
+
+        if (
+          ts.isObjectBindingPattern(current.name) &&
+          isPropsObjectExpression(current.initializer)
+        ) {
+          for (const element of current.name.elements) {
+            if (element.dotDotDotToken != null) {
+              addBindingIdentifierSymbols(
+                element.name,
+                checker,
+                propsObjectSymbols,
+              );
+              continue;
+            }
+
+            const propertyName = getPropertyNameText(
+              element.propertyName ?? element.name,
+            );
+            if (propertyName === "className") {
+              addBindingIdentifierSymbols(
+                element.name,
+                checker,
+                classNameSymbols,
+              );
+            }
           }
         }
-        return;
-      }
-
-      if (
-        ts.isObjectBindingPattern(current.name) &&
-        isPropsObjectExpression(current.initializer)
-      ) {
-        for (const element of current.name.elements) {
-          if (element.dotDotDotToken != null) {
-            addBindingIdentifierSymbols(element.name, checker, propsObjectSymbols);
-            continue;
-          }
-
-          const propertyName = getPropertyNameText(element.propertyName ?? element.name);
-          if (propertyName === "className") {
-            addBindingIdentifierSymbols(element.name, checker, classNameSymbols);
-          }
-        }
-      }
       },
       { skipNestedFunctions: true },
     );
@@ -395,6 +435,49 @@ function createStyleInspector(
       return "passthrough";
     }
     return "unknown";
+  }
+
+  function isClassNamePropExpression(
+    expression: ts.Expression,
+    visited = new Set<ts.Node>(),
+  ): boolean {
+    const unwrapped = unwrapExpression(expression);
+    if (visited.has(unwrapped)) {
+      return false;
+    }
+    visited.add(unwrapped);
+
+    if (ts.isIdentifier(unwrapped)) {
+      const symbol = getSymbol(unwrapped, checker);
+      if (symbol == null) {
+        return false;
+      }
+      if (classNameSymbols.has(symbol)) {
+        return true;
+      }
+
+      const declaration = symbol.valueDeclaration;
+      return (
+        declaration != null &&
+        ts.isVariableDeclaration(declaration) &&
+        declaration.initializer != null &&
+        isClassNamePropExpression(declaration.initializer, visited)
+      );
+    }
+
+    if (ts.isPropertyAccessExpression(unwrapped)) {
+      return (
+        unwrapped.name.text === "className" &&
+        isPropsObjectExpression(unwrapped.expression)
+      );
+    }
+
+    return (
+      ts.isElementAccessExpression(unwrapped) &&
+      ts.isStringLiteral(unwrapped.argumentExpression) &&
+      unwrapped.argumentExpression.text === "className" &&
+      isPropsObjectExpression(unwrapped.expression)
+    );
   }
 
   function classifyExpression(expression: ts.Expression): StyleClassification {
@@ -413,8 +496,7 @@ function createStyleInspector(
       ts.isNoSubstitutionTemplateLiteral(unwrapped)
     ) {
       result = isInternalLiteralText(unwrapped.text) ? "internal" : "unknown";
-    }
-    else if (ts.isTemplateExpression(unwrapped)) {
+    } else if (ts.isTemplateExpression(unwrapped)) {
       const parts = [
         unwrapped.head.text,
         ...unwrapped.templateSpans.map((span) => span.literal.text),
@@ -422,58 +504,49 @@ function createStyleInspector(
       result = parts.some((part) => isInternalLiteralText(part))
         ? "internal"
         : combineClassifications(
-            unwrapped.templateSpans.map((span) => classifyExpression(span.expression)),
+            unwrapped.templateSpans.map((span) =>
+              classifyExpression(span.expression),
+            ),
           );
-    }
-    else if (ts.isIdentifier(unwrapped)) {
-      const symbol = getSymbol(unwrapped, checker);
-      if (symbol != null && classNameSymbols.has(symbol)) {
+    } else if (ts.isIdentifier(unwrapped)) {
+      if (isClassNamePropExpression(unwrapped)) {
         result = "passthrough";
+      } else {
+        const symbol = getSymbol(unwrapped, checker);
+        if (
+          symbol?.valueDeclaration != null &&
+          ts.isVariableDeclaration(symbol.valueDeclaration) &&
+          symbol.valueDeclaration.initializer != null
+        ) {
+          result = classifyExpression(symbol.valueDeclaration.initializer);
+        }
       }
-      else if (
-        symbol?.valueDeclaration != null &&
-        ts.isVariableDeclaration(symbol.valueDeclaration) &&
-        symbol.valueDeclaration.initializer != null
-      ) {
-        result = classifyExpression(symbol.valueDeclaration.initializer);
-      }
-    }
-    else if (ts.isPropertyAccessExpression(unwrapped)) {
-      const propertyName = unwrapped.name.text;
-      result =
-        propertyName === "className" && isPropsObjectExpression(unwrapped.expression)
-          ? "passthrough"
-          : "unknown";
-    }
-    else if (ts.isElementAccessExpression(unwrapped)) {
-      result =
-        ts.isStringLiteral(unwrapped.argumentExpression) &&
-        unwrapped.argumentExpression.text === "className" &&
-        isPropsObjectExpression(unwrapped.expression)
-          ? "passthrough"
-          : "unknown";
-    }
-    else if (ts.isCallExpression(unwrapped)) {
+    } else if (ts.isPropertyAccessExpression(unwrapped)) {
+      result = isClassNamePropExpression(unwrapped) ? "passthrough" : "unknown";
+    } else if (ts.isElementAccessExpression(unwrapped)) {
+      result = isClassNamePropExpression(unwrapped) ? "passthrough" : "unknown";
+    } else if (ts.isCallExpression(unwrapped)) {
       const calleeName = getCallLikeName(unwrapped.expression);
-      if (calleeName === "cva" || classifyExpression(unwrapped.expression) === "internal") {
+      if (
+        calleeName === "cva" ||
+        classifyExpression(unwrapped.expression) === "internal"
+      ) {
         result = "internal";
-      }
-      else if (calleeName === "clsx") {
+      } else if (isClassNameHelperName(calleeName)) {
         result = combineClassifications(
           unwrapped.arguments.map((argument) => classifyExpression(argument)),
         );
       }
-    }
-    else if (ts.isConditionalExpression(unwrapped)) {
+    } else if (ts.isConditionalExpression(unwrapped)) {
       result = combineClassifications([
         classifyExpression(unwrapped.whenTrue),
         classifyExpression(unwrapped.whenFalse),
       ]);
-    }
-    else if (
+    } else if (
       ts.isBinaryExpression(unwrapped) &&
       (unwrapped.operatorToken.kind === ts.SyntaxKind.PlusToken ||
-        unwrapped.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken ||
+        unwrapped.operatorToken.kind ===
+          ts.SyntaxKind.AmpersandAmpersandToken ||
         unwrapped.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
         unwrapped.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken)
     ) {
@@ -481,11 +554,12 @@ function createStyleInspector(
         classifyExpression(unwrapped.left),
         classifyExpression(unwrapped.right),
       ]);
-    }
-    else if (ts.isArrayLiteralExpression(unwrapped)) {
+    } else if (ts.isArrayLiteralExpression(unwrapped)) {
       result = combineClassifications(
         unwrapped.elements
-          .filter((element): element is ts.Expression => ts.isExpression(element))
+          .filter((element): element is ts.Expression =>
+            ts.isExpression(element),
+          )
           .map((element) => classifyExpression(element)),
       );
     }
@@ -494,7 +568,7 @@ function createStyleInspector(
   }
 
   function attributeHasInternalStyle(attribute: ts.JsxAttribute): boolean {
-    const {initializer} = attribute;
+    const { initializer } = attribute;
     if (initializer == null) {
       return false;
     }
@@ -511,24 +585,27 @@ function createStyleInspector(
   }
 
   function hasInternalStyle(): boolean {
-    return collectReturnedExpressions(component.renderFunction).some((expression) => {
-      let found = false;
-      visitNode(expression, (current) => {
-        if (
-          ts.isJsxAttribute(current) &&
-          ts.isIdentifier(current.name) &&
-          current.name.text === "className" &&
-          attributeHasInternalStyle(current)
-        ) {
-          found = true;
-        }
-      });
-      return found;
-    });
+    return collectReturnedExpressions(component.renderFunction).some(
+      (expression) => {
+        let found = false;
+        visitNode(expression, (current) => {
+          if (
+            ts.isJsxAttribute(current) &&
+            ts.isIdentifier(current.name) &&
+            current.name.text === "className" &&
+            attributeHasInternalStyle(current)
+          ) {
+            found = true;
+          }
+        });
+        return found;
+      },
+    );
   }
 
   return {
     hasInternalStyle,
+    isClassNamePropExpression,
   };
 }
 
@@ -537,18 +614,28 @@ export function createComponentAnalyzer(
 ) {
   const services = ESLintUtils.getParserServices(context);
   const checker = services.program.getTypeChecker();
-  const analysisCache = new Map<ts.Declaration, ComponentAnalysis | undefined>();
+  const stateCache = new Map<
+    ts.Declaration,
+    | {
+        analysis: ComponentAnalysis;
+        styleInspector: ReturnType<typeof createStyleInspector>;
+      }
+    | undefined
+  >();
 
-  function analyzeDeclaration(
-    declaration: ts.Declaration,
-  ): ComponentAnalysis | undefined {
-    if (analysisCache.has(declaration)) {
-      return analysisCache.get(declaration);
+  function getComponentState(declaration: ts.Declaration):
+    | {
+        analysis: ComponentAnalysis;
+        styleInspector: ReturnType<typeof createStyleInspector>;
+      }
+    | undefined {
+    if (stateCache.has(declaration)) {
+      return stateCache.get(declaration);
     }
 
     const component = getComponentDefinition(declaration);
     if (component == null) {
-      analysisCache.set(declaration, undefined);
+      stateCache.set(declaration, undefined);
       return undefined;
     }
 
@@ -562,8 +649,98 @@ export function createComponentAnalyzer(
       hasInternalStyle: styleInspector.hasInternalStyle(),
     };
 
-    analysisCache.set(declaration, analysis);
-    return analysis;
+    const state = {
+      analysis,
+      styleInspector,
+    };
+    stateCache.set(declaration, state);
+    return state;
+  }
+
+  function analyzeDeclaration(
+    declaration: ts.Declaration,
+  ): ComponentAnalysis | undefined {
+    return getComponentState(declaration)?.analysis;
+  }
+
+  function getStateForRenderFunction(
+    renderFunction:
+      | ts.ArrowFunction
+      | ts.FunctionDeclaration
+      | ts.FunctionExpression,
+  ):
+    | {
+        analysis: ComponentAnalysis;
+        styleInspector: ReturnType<typeof createStyleInspector>;
+      }
+    | undefined {
+    if (ts.isFunctionDeclaration(renderFunction)) {
+      return getComponentState(renderFunction);
+    }
+
+    let current: ts.Node = renderFunction;
+    while (current.parent != null) {
+      const parent = current.parent;
+      if (
+        ts.isAsExpression(parent) ||
+        ts.isParenthesizedExpression(parent) ||
+        ts.isSatisfiesExpression(parent) ||
+        ts.isTypeAssertionExpression(parent) ||
+        ts.isNonNullExpression(parent)
+      ) {
+        current = parent;
+        continue;
+      }
+
+      if (ts.isCallExpression(parent) && parent.arguments[0] === current) {
+        const calleeName = getCallLikeName(parent.expression);
+        if (calleeName === "forwardRef" || calleeName === "memo") {
+          current = parent;
+          continue;
+        }
+      }
+
+      if (ts.isVariableDeclaration(parent)) {
+        const state = getComponentState(parent);
+        return state?.analysis.renderFunction === renderFunction
+          ? state
+          : undefined;
+      }
+
+      return undefined;
+    }
+
+    return undefined;
+  }
+
+  function getOwningComponentState(node: ts.Node):
+    | {
+        analysis: ComponentAnalysis;
+        styleInspector: ReturnType<typeof createStyleInspector>;
+      }
+    | undefined {
+    let current: ts.Node | undefined = node;
+
+    while (current != null) {
+      if (ts.isVariableDeclaration(current)) {
+        const state = getComponentState(current);
+        if (state != null) {
+          return state;
+        }
+      }
+
+      if (
+        ts.isFunctionDeclaration(current) ||
+        ts.isArrowFunction(current) ||
+        ts.isFunctionExpression(current)
+      ) {
+        return getStateForRenderFunction(current);
+      }
+
+      current = current.parent;
+    }
+
+    return undefined;
   }
 
   function analyzeJsxOpeningElement(
@@ -595,10 +772,35 @@ export function createComponentAnalyzer(
     return undefined;
   }
 
+  function getEnclosingComponentAnalysis(
+    node: TSESTree.Node,
+  ): ComponentAnalysis | undefined {
+    const tsNode = services.esTreeNodeToTSNodeMap.get(node);
+    return getOwningComponentState(tsNode)?.analysis;
+  }
+
+  function isClassNamePropExpression(
+    node: TSESTree.Expression,
+    componentAnalysis: ComponentAnalysis,
+  ): boolean {
+    const tsNode = services.esTreeNodeToTSNodeMap.get(node);
+    if (!ts.isExpression(tsNode)) {
+      return false;
+    }
+
+    return (
+      getComponentState(
+        componentAnalysis.declaration,
+      )?.styleInspector.isClassNamePropExpression(tsNode) ?? false
+    );
+  }
+
   return {
     analyzeJsxOpeningElement,
     checker,
+    getEnclosingComponentAnalysis,
     getCurrentFileAnalysis,
+    isClassNamePropExpression,
     services,
   };
 }

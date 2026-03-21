@@ -12,8 +12,10 @@ export default function config(
       [name]: plugin,
     },
     rules: {
+      [`${name}/no-classname-prop-merge-in-styled-components`]: ruleSeverity,
       [`${name}/no-classname-prop-in-styled-components`]: ruleSeverity,
       [`${name}/no-classname-prop-on-styled-components`]: ruleSeverity,
+      [`${name}/prefer-static-classname-in-styled-components`]: ruleSeverity,
     },
   };
 }

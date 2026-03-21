@@ -4,12 +4,15 @@
 [![npm downloads][npm-downloads-src]][npm-downloads-href]
 
 ESLint rules for React components that forbid exposing or passing `className`
-on internally styled components.
+on internally styled components, and normalize render-side `className`
+expressions toward static literals and variant-driven styling.
 
 The plugin is built for teams that want this contract:
 
 - styled components should not expose `className`
 - styled components should not accept `className` at the JSX call site
+- styled components should not merge prop-driven `className` into their own render output
+- fully static render-side `className` values should use plain JSX string literals
 - styling differences should be expressed through meaningful variant props instead
 
 The rules require TypeScript parser services. Configure
@@ -26,6 +29,12 @@ uppercase letters.
   `className` prop.
 - `no-classname-prop-on-styled-components`
   Flags JSX usages that pass `className` to internally styled components.
+- `no-classname-prop-merge-in-styled-components`
+  Flags render-side `className` expressions that merge in prop-driven
+  `className` values inside internally styled components.
+- `prefer-static-classname-in-styled-components`
+  Flags render-side `className` expressions that are fully static and should be
+  written as plain JSX string literals.
 
 ## Configuration
 
@@ -62,9 +71,10 @@ values derived from internal style signals such as:
 
 - string or template literal class names
 - `clsx(...)`
+- `cn(...)`
 - `cva(...)`
 - local identifiers that resolve to those style expressions
-- merge patterns like `clsx("base", className)`
+- merge patterns like `clsx("base", className)` or `cn("base", className)`
 
 Pure passthrough alone does not count as internal styling:
 
@@ -76,6 +86,9 @@ Pure passthrough alone does not count as internal styling:
 
 When a component needs styling choices, prefer variant props such as `variant`,
 `size`, or `tone` over external `className` injection.
+
+When a component's final class list is static, prefer `className="..."` over
+wrappers such as `className={"..."}` or `className={clsx("...", "....")}`.
 
 ## License
 
