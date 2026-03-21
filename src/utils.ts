@@ -12,7 +12,7 @@ const hasDocs = new Set([
 ]);
 
 const blobUrl =
-  "https://github.com/nirtamir2/eslint-plugin-className-components/blob/main/src/rules/";
+  "https://github.com/nirtamir2/eslint-plugin-classname-components/blob/main/src/rules/";
 
 export interface RuleModule<T extends ReadonlyArray<unknown>>
   extends Rule.RuleModule {

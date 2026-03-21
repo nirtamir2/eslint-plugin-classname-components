@@ -7,12 +7,12 @@
   "author": "Nir Tamir <nirtamir2@gmail.com>",
   "license": "MIT",
   "funding": "https://github.com/sponsors/nirtamir2",
-  "homepage": "https://github.com/nirtamir2/eslint-plugin-className-components#readme",
+  "homepage": "https://github.com/nirtamir2/eslint-plugin-classname-components#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nirtamir2/eslint-plugin-className-components.git"
+    "url": "git+https://github.com/nirtamir2/eslint-plugin-classname-components.git"
   },
-  "bugs": "https://github.com/nirtamir2/eslint-plugin-className-components/issues",
+  "bugs": "https://github.com/nirtamir2/eslint-plugin-classname-components/issues",
   "keywords": [
     "eslint",
     "eslintplugin",

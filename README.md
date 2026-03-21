@@ -1,4 +1,4 @@
-# eslint-plugin-className-components
+# eslint-plugin-classname-components
 
 [![npm version][npm-version-src]][npm-version-href]
 [![npm downloads][npm-downloads-src]][npm-downloads-href]
@@ -37,7 +37,7 @@ Add to your `eslint.config.js`
 
 ```js
 import typescriptEslintParser from "@typescript-eslint/parser";
-import componentApiConfig from "eslint-plugin-classname-components/config";
+import classnameComponentsConfig from "eslint-plugin-classname-components/config";
 
 export default [
   // other settings...
@@ -51,7 +51,7 @@ export default [
       },
     },
   },
-  componentApiConfig({ strict: true }),
+  classnameComponentsConfig({ strict: true }),
 ];
 ```
 
