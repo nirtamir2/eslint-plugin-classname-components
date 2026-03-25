@@ -1,7 +1,9 @@
 import typescriptEslintParser from "@typescript-eslint/parser";
 import { any as tsx } from "code-tag";
 import { run } from "./_test";
-import noClassnamePropInStyledComponents, { RULE_NAME } from "./no-classname-prop-in-styled-components";
+import noClassnamePropInStyledComponents, {
+  RULE_NAME,
+} from "./no-classname-prop-in-styled-components";
 
 const setup = tsx`
   declare namespace JSX {
@@ -48,7 +50,7 @@ run({
   },
   valid: [
     tsx`
-      ${setup}
+      ${setup};
       type Props = JSX.IntrinsicElements["button"];
 
       function Button(props: Props) {
@@ -56,7 +58,7 @@ run({
       }
     `,
     tsx`
-      ${setup}
+      ${setup};
       type Props = JSX.IntrinsicElements["button"];
 
       function Button(props: Props) {
@@ -64,7 +66,7 @@ run({
       }
     `,
     tsx`
-      ${setup}
+      ${setup};
       type NativeButtonProps = JSX.IntrinsicElements["button"];
       type Props = Omit<NativeButtonProps, "className"> & {
         variant?: "primary" | "secondary";
@@ -80,16 +82,22 @@ run({
       });
 
       function Button(props: Props) {
-        return <button className={buttonVariants({ variant: props.variant })} />;
+        return (
+          <button className={buttonVariants({ variant: props.variant })} />
+        );
       }
     `,
     tsx`
-      ${setup}
+      ${setup};
       type Props = Omit<JSX.IntrinsicElements["button"], "className">;
 
       const Button = memo(
         forwardRef<unknown, Props>((props, ref) => {
-          return <button className={clsx("rounded", props.disabled && "opacity-50")} />;
+          return (
+            <button
+              className={clsx("rounded", props.disabled && "opacity-50")}
+            />
+          );
         }),
       );
     `,
@@ -98,41 +106,100 @@ run({
     {
       name: "string literal internal styles with inherited className props",
       code: tsx`
-        ${setup}
+        ${setup};
         type Props = JSX.IntrinsicElements["button"];
 
         function Button(props: Props) {
           return <button className="rounded px-4" />;
         }
       `,
+      output: tsx`
+        ${setup};
+        type Props = JSX.IntrinsicElements["button"];
+
+        function Button(props: Omit<Props, "className">) {
+          return <button className="rounded px-4" />;
+        }
+      `,
       errors: [
         {
           messageId: "forbid",
-          suggestions: [{ messageId: "suggestOmit" }] as never,
         },
       ],
     },
     {
       name: "clsx merge still counts as internal styling",
       code: tsx`
-        ${setup}
-        function Button(
-          { className }: { className?: string; disabled?: boolean },
-        ) {
+        ${setup};
+        function Button({
+          className,
+        }: {
+          className?: string;
+          disabled?: boolean;
+        }) {
           return <button className={clsx("rounded", className)} />;
         }
       `,
       errors: [
         {
           messageId: "forbid",
-          suggestions: [{ messageId: "suggestOmit" }] as never,
+        },
+      ],
+    },
+    {
+      name: "destructured className is removed once it is no longer used",
+      code: tsx`
+        ${setup};
+        function Button({
+          className,
+          disabled,
+          ...props
+        }: {
+          className?: string;
+          disabled?: boolean;
+          type?: "button" | "submit";
+        }) {
+          return (
+            <button
+              disabled={disabled}
+              type="button"
+              className={clsx("rounded", disabled && "opacity-50")}
+            />
+          );
+        }
+      `,
+      output: tsx`
+        ${setup};
+        function Button({
+          disabled,
+          ...props
+        }: Omit<
+          {
+            className?: string;
+            disabled?: boolean;
+            type?: "button" | "submit";
+          },
+          "className"
+        >) {
+          return (
+            <button
+              disabled={disabled}
+              type="button"
+              className={clsx("rounded", disabled && "opacity-50")}
+            />
+          );
+        }
+      `,
+      errors: [
+        {
+          messageId: "forbid",
         },
       ],
     },
     {
       name: "cva styles on a memoized component still forbid className",
       code: tsx`
-        ${setup}
+        ${setup};
         type Props = JSX.IntrinsicElements["button"];
         const buttonVariants = cva("rounded");
 
@@ -140,10 +207,18 @@ run({
           return <button className={buttonVariants()} />;
         });
       `,
+      output: tsx`
+        ${setup};
+        type Props = JSX.IntrinsicElements["button"];
+        const buttonVariants = cva("rounded");
+
+        const Button = memo((props: Omit<Props, "className">) => {
+          return <button className={buttonVariants()} />;
+        });
+      `,
       errors: [
         {
           messageId: "forbid",
-          suggestions: [{ messageId: "suggestOmit" }] as never,
         },
       ],
     },

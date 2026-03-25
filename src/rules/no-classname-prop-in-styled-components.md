@@ -33,3 +33,8 @@ function Button(props: Props) {
 - Wrap inherited prop types with `Omit<T, "className">`
 - Replace external styling needs with variant props such as `variant` or `tone`
 
+## Autofix
+
+- Automatically wraps typed props in `Omit<T, "className">` when the
+  component no longer references the `className` prop in its render logic
+- For destructured params, also removes the `className` binding when it is safe

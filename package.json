@@ -61,6 +61,7 @@
   "scripts": {
     "build": "unbuild",
     "ci": "pnpm run --parallel --aggregate-output \"/^(lint|format|type-check).*/\"",
+    "demo:shadcn-alert": "tsx scripts/demo-shadcn-alert.ts",
     "dev": "unbuild --stub",
     "format": "prettier \"**/*\" --write --ignore-unknown --log-level silent",
     "lint": "pnpm run dev && eslint . --fix",
