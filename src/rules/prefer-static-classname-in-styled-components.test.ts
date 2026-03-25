@@ -76,6 +76,12 @@ run({
         return <button className={props.className} />;
       }
     `,
+    tsx`
+      ${setup};
+      function Button(props: { sizeClass: string }) {
+        return <button className={\`size-\${props.sizeClass}\`} />;
+      }
+    `,
   ],
   invalid: [
     {
@@ -105,6 +111,62 @@ run({
       output: tsx`
         ${setup};
         function Button() {
+          return <button className="rounded px-4" />;
+        }
+      `,
+      errors: [{ messageId: "preferStatic" }],
+    },
+    {
+      name: "static const identifier becomes jsx string literal",
+      code: tsx`
+        ${setup};
+        function Button() {
+          const buttonClassName = "rounded px-4";
+          return <button className={buttonClassName} />;
+        }
+      `,
+      output: tsx`
+        ${setup};
+        function Button() {
+          const buttonClassName = "rounded px-4";
+          return <button className="rounded px-4" />;
+        }
+      `,
+      errors: [{ messageId: "preferStatic" }],
+    },
+    {
+      name: "nested static const identifier becomes jsx string literal",
+      code: tsx`
+        ${setup};
+        function Button() {
+          const baseClassName = "rounded px-4";
+          const buttonClassName = baseClassName;
+          return <button className={buttonClassName} />;
+        }
+      `,
+      output: tsx`
+        ${setup};
+        function Button() {
+          const baseClassName = "rounded px-4";
+          const buttonClassName = baseClassName;
+          return <button className="rounded px-4" />;
+        }
+      `,
+      errors: [{ messageId: "preferStatic" }],
+    },
+    {
+      name: "template literal with static const expression becomes jsx string literal",
+      code: tsx`
+        ${setup};
+        function Button() {
+          const baseClassName = "rounded";
+          return <button className={\`\${baseClassName} px-4\`} />;
+        }
+      `,
+      output: tsx`
+        ${setup};
+        function Button() {
+          const baseClassName = "rounded";
           return <button className="rounded px-4" />;
         }
       `,
@@ -154,6 +216,72 @@ run({
         ${setup};
         function Button() {
           return <button className="rounded px-4" />;
+        }
+      `,
+      errors: [{ messageId: "preferStatic" }],
+    },
+    {
+      name: "clsx empty-string ternary becomes logical and",
+      code: tsx`
+        ${setup};
+        function Button(props: { disabled?: boolean }) {
+          return (
+            <button
+              className={clsx("rounded", props.disabled ? "opacity-50" : "")}
+            />
+          );
+        }
+      `,
+      output: tsx`
+        ${setup};
+        function Button(props: { disabled?: boolean }) {
+          return (
+            <button
+              className={clsx("rounded", (props.disabled) && "opacity-50")}
+            />
+          );
+        }
+      `,
+      errors: [{ messageId: "preferStatic" }],
+    },
+    {
+      name: "whitespace-delimited template literal becomes clsx call",
+      code: tsx`
+        ${setup};
+        function Button(props: { disabled?: boolean }) {
+          return (
+            <button
+              className={\`rounded px-4 \${props.disabled ? "opacity-50" : ""}\`}
+            />
+          );
+        }
+      `,
+      output: tsx`
+        ${setup};
+        function Button(props: { disabled?: boolean }) {
+          return (
+            <button
+              className={clsx("rounded px-4", (props.disabled) && "opacity-50")}
+            />
+          );
+        }
+      `,
+      errors: [{ messageId: "preferStatic" }],
+    },
+    {
+      name: "template literal variable becomes clsx call",
+      code: tsx`
+        ${setup};
+        function Button(props: { toneClassName: string }) {
+          const buttonClassName = \`rounded px-4 \${props.toneClassName}\`;
+          return <button className={buttonClassName} />;
+        }
+      `,
+      output: tsx`
+        ${setup};
+        function Button(props: { toneClassName: string }) {
+          const buttonClassName = \`rounded px-4 \${props.toneClassName}\`;
+          return <button className={clsx("rounded px-4", props.toneClassName)} />;
         }
       `,
       errors: [{ messageId: "preferStatic" }],

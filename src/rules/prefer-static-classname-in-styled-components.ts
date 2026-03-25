@@ -1,14 +1,33 @@
 import type { TSESTree } from "@typescript-eslint/types";
+import ts from "typescript";
 import { createComponentAnalyzer } from "./component-analysis";
 import {
   buildClassNameAttributeText,
-  getStaticClassNameReplacement,
+  getPreferredClassNameReplacement,
 } from "./render-classname-utils";
 import { createEslintRule } from "../utils";
 
 export const RULE_NAME = "prefer-static-classname-in-styled-components";
 export type MessageIds = "preferStatic";
 export type Options = [];
+
+function getSymbol(
+  node: ts.Node,
+  checker: ts.TypeChecker,
+): ts.Symbol | undefined {
+  const symbol = checker.getSymbolAtLocation(node);
+  if (symbol == null) {
+    return undefined;
+  }
+
+  // TypeScript exposes alias state through symbol bit flags.
+  // eslint-disable-next-line sonarjs/bitwise-operators
+  if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
+    return checker.getAliasedSymbol(symbol);
+  }
+
+  return symbol;
+}
 
 function isClassNameAttribute(
   node: TSESTree.JSXAttribute,
@@ -42,12 +61,43 @@ export default createEslintRule<Options, MessageIds>({
     schema: [],
     messages: {
       preferStatic:
-        "This className value is fully static. Replace it with a plain JSX string literal.",
+        "Prefer plain JSX string literals for static className values and simplify className composition in clsx(...).",
     },
   },
   defaultOptions: [],
   create: (context) => {
     const analyzer = createComponentAnalyzer(context);
+    const sourceCode = context.sourceCode;
+
+    function resolveIdentifier(
+      node: TSESTree.Identifier,
+    ): TSESTree.Expression | undefined {
+      const tsNode = analyzer.services.esTreeNodeToTSNodeMap.get(node);
+      const symbol = getSymbol(tsNode, analyzer.checker);
+      const declaration = symbol?.valueDeclaration;
+      if (
+        declaration == null ||
+        !ts.isVariableDeclaration(declaration) ||
+        declaration.initializer == null
+      ) {
+        return undefined;
+      }
+
+      const declarationList = declaration.parent;
+      if (
+        !ts.isVariableDeclarationList(declarationList) ||
+        (declarationList.flags & ts.NodeFlags.Const) === 0
+      ) {
+        return undefined;
+      }
+
+      const expression = analyzer.services.tsNodeToESTreeNodeMap.get(
+        declaration.initializer,
+      );
+      return expression != null && "type" in expression
+        ? (expression as TSESTree.Expression)
+        : undefined;
+    }
 
     return {
       JSXAttribute(node) {
@@ -60,8 +110,13 @@ export default createEslintRule<Options, MessageIds>({
           return;
         }
 
-        const replacement = getStaticClassNameReplacement(
+        const replacement = getPreferredClassNameReplacement(
           node.value.expression,
+          {
+            getText: (currentNode) => sourceCode.getText(currentNode),
+            helperName: "clsx",
+            resolveIdentifier,
+          },
         );
         if (replacement == null) {
           return;
