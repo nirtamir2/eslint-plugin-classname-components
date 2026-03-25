@@ -8,6 +8,7 @@ const DEMO_PLUGIN_NAME = "classname-components-demo";
 type DemoRuleConfig = Record<
   | `${typeof DEMO_PLUGIN_NAME}/no-classname-prop-in-styled-components`
   | `${typeof DEMO_PLUGIN_NAME}/no-classname-prop-merge-in-styled-components`
+  | `${typeof DEMO_PLUGIN_NAME}/prefer-plain-props-parameter`
   | `${typeof DEMO_PLUGIN_NAME}/prefer-static-classname-in-styled-components`,
   "off" | "error"
 >;
@@ -15,18 +16,21 @@ type DemoRuleConfig = Record<
 const ALL_RULES: DemoRuleConfig = {
   [`${DEMO_PLUGIN_NAME}/no-classname-prop-in-styled-components`]: "error",
   [`${DEMO_PLUGIN_NAME}/no-classname-prop-merge-in-styled-components`]: "error",
+  [`${DEMO_PLUGIN_NAME}/prefer-plain-props-parameter`]: "error",
   [`${DEMO_PLUGIN_NAME}/prefer-static-classname-in-styled-components`]: "error",
 };
 
 const MERGE_ONLY_RULES: DemoRuleConfig = {
   [`${DEMO_PLUGIN_NAME}/no-classname-prop-in-styled-components`]: "off",
   [`${DEMO_PLUGIN_NAME}/no-classname-prop-merge-in-styled-components`]: "error",
+  [`${DEMO_PLUGIN_NAME}/prefer-plain-props-parameter`]: "off",
   [`${DEMO_PLUGIN_NAME}/prefer-static-classname-in-styled-components`]: "off",
 };
 
 const PREFER_STATIC_ONLY_RULES: DemoRuleConfig = {
   [`${DEMO_PLUGIN_NAME}/no-classname-prop-in-styled-components`]: "off",
   [`${DEMO_PLUGIN_NAME}/no-classname-prop-merge-in-styled-components`]: "off",
+  [`${DEMO_PLUGIN_NAME}/prefer-plain-props-parameter`]: "off",
   [`${DEMO_PLUGIN_NAME}/prefer-static-classname-in-styled-components`]: "error",
 };
 

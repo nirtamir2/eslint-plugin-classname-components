@@ -32,6 +32,9 @@ uppercase letters.
 - `prefer-static-classname-in-styled-components`
   Flags render-side `className` expressions that are fully static and should be
   written as plain JSX string literals.
+- `prefer-plain-props-parameter`
+  Flags component parameters that only destructure `{ ...props }` and should be
+  plain `props` parameters instead.
 
 ## Configuration
 

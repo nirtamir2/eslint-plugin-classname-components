@@ -14,6 +14,7 @@ export default function config(
     rules: {
       [`${name}/no-classname-prop-merge-in-styled-components`]: ruleSeverity,
       [`${name}/no-classname-prop-in-styled-components`]: ruleSeverity,
+      [`${name}/prefer-plain-props-parameter`]: ruleSeverity,
       [`${name}/prefer-static-classname-in-styled-components`]: ruleSeverity,
     },
   };

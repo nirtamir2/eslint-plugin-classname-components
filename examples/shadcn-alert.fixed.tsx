@@ -53,7 +53,7 @@ function Alert({ variant, ...props }: Omit<React.ComponentProps<"div"> & Variant
   );
 }
 
-function AlertTitle({ ...props }: Omit<React.ComponentProps<"div">, "className">) {
+function AlertTitle(props: Omit<React.ComponentProps<"div">, "className">) {
   return (
     <div
       data-slot="alert-title"
@@ -63,7 +63,7 @@ function AlertTitle({ ...props }: Omit<React.ComponentProps<"div">, "className">
   );
 }
 
-function AlertDescription({ ...props }: Omit<React.ComponentProps<"div">, "className">) {
+function AlertDescription(props: Omit<React.ComponentProps<"div">, "className">) {
   return (
     <div
       data-slot="alert-description"
