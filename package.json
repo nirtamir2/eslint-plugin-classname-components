@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.3.0",
   "packageManager": "pnpm@10.4.0",
-  "description": "ESLint rules for React components that forbid exposing or passing className on internally styled components.",
+  "description": "ESLint rules for React components that forbid exposing className on internally styled components.",
   "author": "Nir Tamir <nirtamir2@gmail.com>",
   "license": "MIT",
   "funding": "https://github.com/sponsors/nirtamir2",

@@ -3,14 +3,13 @@
 [![npm version][npm-version-src]][npm-version-href]
 [![npm downloads][npm-downloads-src]][npm-downloads-href]
 
-ESLint rules for React components that forbid exposing or passing `className`
-on internally styled components, and normalize render-side `className`
+ESLint rules for React components that forbid exposing `className` on
+internally styled components, and normalize render-side `className`
 expressions toward static literals and variant-driven styling.
 
 The plugin is built for teams that want this contract:
 
 - styled components should not expose `className`
-- styled components should not accept `className` at the JSX call site
 - styled components should not merge prop-driven `className` into their own render output
 - fully static render-side `className` values should use plain JSX string literals
 - styling differences should be expressed through meaningful variant props instead
@@ -27,8 +26,6 @@ uppercase letters.
 - `no-classname-prop-in-styled-components`
   Flags component definitions that style themselves internally and still expose a
   `className` prop.
-- `no-classname-prop-on-styled-components`
-  Flags JSX usages that pass `className` to internally styled components.
 - `no-classname-prop-merge-in-styled-components`
   Flags render-side `className` expressions that merge in prop-driven
   `className` values inside internally styled components.
