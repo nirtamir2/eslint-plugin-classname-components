@@ -21,7 +21,7 @@ function getSymbol(
   }
 
   // TypeScript exposes alias state through symbol bit flags.
-   
+
   if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
     return checker.getAliasedSymbol(symbol);
   }
@@ -67,7 +67,7 @@ export default createEslintRule<Options, MessageIds>({
   defaultOptions: [],
   create: (context) => {
     const analyzer = createComponentAnalyzer(context);
-    const {sourceCode} = context;
+    const { sourceCode } = context;
 
     function resolveIdentifier(
       node: TSESTree.Identifier,
