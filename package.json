@@ -1,7 +1,7 @@
 {
   "name": "eslint-plugin-classname-components",
   "type": "module",
-  "version": "0.3.0",
+  "version": "0.0.1",
   "packageManager": "pnpm@10.4.0",
   "description": "ESLint rules for React components that forbid exposing className on internally styled components.",
   "author": "Nir Tamir <nirtamir2@gmail.com>",
