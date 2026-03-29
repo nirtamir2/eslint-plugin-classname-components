@@ -12,9 +12,9 @@ export const plugin = {
   },
   // @keep-sorted
   rules: {
+    "no-classname-prop-in-styled-components": noClassnamePropInStyledComponents,
     "no-classname-prop-merge-in-styled-components":
       noClassnamePropMergeInStyledComponents,
-    "no-classname-prop-in-styled-components": noClassnamePropInStyledComponents,
     "prefer-plain-props-parameter": preferPlainPropsParameter,
     "prefer-static-classname-in-styled-components":
       preferStaticClassnameInStyledComponents,

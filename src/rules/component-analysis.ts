@@ -680,7 +680,7 @@ export function createComponentAnalyzer(
 
     let current: ts.Node = renderFunction;
     while (current.parent != null) {
-      const parent = current.parent;
+      const {parent} = current;
       if (
         ts.isAsExpression(parent) ||
         ts.isParenthesizedExpression(parent) ||

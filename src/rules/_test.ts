@@ -16,9 +16,9 @@ function removeConfigLookupWarnings(result: {
   });
 }
 
-function withFilteredOnResult<
-  T extends InvalidTestCase | ValidTestCase,
->(cases: Array<T> | undefined): Array<T> | undefined {
+function withFilteredOnResult<T extends InvalidTestCase | ValidTestCase>(
+  cases: Array<T> | undefined,
+): Array<T> | undefined {
   return cases?.map((testcase) => {
     if (typeof testcase === "string") {
       return {
@@ -59,15 +59,10 @@ export function run(options: TestCasesOptions & RuleTesterInitOptions): void {
     cases.valid = normalizedValid;
   }
 
-  _runClassic(
-    name,
-    rule,
-    cases,
-    {
-      languageOptions: {
-        parser: tsParser,
-      },
-      ...rest,
+  _runClassic(name, rule, cases, {
+    languageOptions: {
+      parser: tsParser,
     },
-  );
+    ...rest,
+  });
 }

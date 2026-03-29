@@ -133,9 +133,7 @@ run({
           className?: string;
           variant?: "primary" | "secondary";
         }) {
-          return (
-            <button className={buttonVariants({ variant })} />
-          );
+          return <button className={buttonVariants({ variant })} />;
         }
       `,
       errors: [{ messageId: "forbid" }],

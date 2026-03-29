@@ -237,7 +237,7 @@ run({
         function Button(props: { disabled?: boolean }) {
           return (
             <button
-              className={clsx("rounded", (props.disabled) && "opacity-50")}
+              className={clsx("rounded", props.disabled && "opacity-50")}
             />
           );
         }
@@ -261,7 +261,7 @@ run({
         function Button(props: { disabled?: boolean }) {
           return (
             <button
-              className={clsx("rounded px-4", (props.disabled) && "opacity-50")}
+              className={clsx("rounded px-4", props.disabled && "opacity-50")}
             />
           );
         }
@@ -281,7 +281,9 @@ run({
         ${setup};
         function Button(props: { toneClassName: string }) {
           const buttonClassName = \`rounded px-4 \${props.toneClassName}\`;
-          return <button className={clsx("rounded px-4", props.toneClassName)} />;
+          return (
+            <button className={clsx("rounded px-4", props.toneClassName)} />
+          );
         }
       `,
       errors: [{ messageId: "preferStatic" }],
