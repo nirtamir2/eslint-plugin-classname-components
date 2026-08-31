@@ -1,13 +1,13 @@
 # no-classname-prop-merge-in-styled-components
 
-Disallow merging prop-driven `className` values into internally styled
-components.
+Disallow merging prop-driven `className` or `class` values into internally
+styled components. `class` is treated the same as `className` (SolidJS).
 
 ## Why
 
 If a component already owns its styling, merging a consumer-provided
-`className` into its rendered output bypasses meaningful variants and makes the
-API harder to reason about.
+`className` or `class` into its rendered output bypasses meaningful variants
+and makes the API harder to reason about.
 
 ## Reported
 

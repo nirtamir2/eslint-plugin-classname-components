@@ -3,15 +3,15 @@
 [![npm version][npm-version-src]][npm-version-href]
 [![npm downloads][npm-downloads-src]][npm-downloads-href]
 
-ESLint rules for React components that forbid exposing `className` on
-internally styled components, and normalize render-side `className`
+ESLint rules for React and SolidJS components that forbid exposing `className`
+or `class` on internally styled components, and normalize render-side class
 expressions toward static literals and variant-driven styling.
 
 The plugin is built for teams that want this contract:
 
-- styled components should not expose `className`
-- styled components should not merge prop-driven `className` into their own render output
-- fully static render-side `className` values should use plain JSX string literals
+- styled components should not expose `className` or `class`
+- styled components should not merge prop-driven `className` or `class` into their own render output
+- fully static render-side `className` / `class` values should use plain JSX string literals
 - styling differences should be expressed through meaningful variant props instead
 
 The rules require TypeScript parser services. Configure
@@ -25,12 +25,12 @@ uppercase letters.
 
 - `no-classname-prop-in-styled-components`
   Flags component definitions that style themselves internally and still expose a
-  `className` prop.
+  `className` or `class` prop.
 - `no-classname-prop-merge-in-styled-components`
-  Flags render-side `className` expressions that merge in prop-driven
-  `className` values inside internally styled components.
+  Flags render-side `className` or `class` expressions that merge in prop-driven
+  class values inside internally styled components.
 - `prefer-static-classname-in-styled-components`
-  Flags render-side `className` expressions that are fully static and should be
+  Flags render-side `className` or `class` expressions that are fully static and should be
   written as plain JSX string literals.
 - `prefer-plain-props-parameter`
   Flags component parameters that only destructure `{ ...props }` and should be
@@ -67,7 +67,7 @@ export default [
 ## What Counts As Internal Styling
 
 The rules treat a component as internally styled when it renders `className`
-values derived from internal style signals such as:
+or `class` values derived from internal style signals such as:
 
 - string or template literal class names
 - `clsx(...)`
@@ -78,17 +78,18 @@ values derived from internal style signals such as:
 
 Pure passthrough alone does not count as internal styling:
 
-- `className={props.className}`
-- `className={className}`
+- `className={props.className}` / `class={props.class}`
+- `className={className}` / `class={className}`
 - `{...props}` by itself
 
 ## Recommendations
 
 When a component needs styling choices, prefer variant props such as `variant`,
-`size`, or `tone` over external `className` injection.
+`size`, or `tone` over external `className` / `class` injection.
 
-When a component's final class list is static, prefer `className="..."` over
-wrappers such as `className={"..."}` or `className={clsx("...", "....")}`.
+When a component's final class list is static, prefer `className="..."` or
+`class="..."` over wrappers such as `className={"..."}` or
+`className={clsx("...", "....")}`.
 
 ## License
 

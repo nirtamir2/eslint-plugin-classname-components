@@ -6,7 +6,7 @@ export default nirtamir2(
   },
   [
     {
-      ignores: ["vendor"],
+      ignores: ["vendor", "examples/**"],
     },
     {
       rules: {
@@ -18,7 +18,10 @@ export default nirtamir2(
       ignores: ["src/rules/*.md"],
     },
     {
-      files: ["**/*"],
+      files: ["package.json"],
+      rules: {
+        "e18e/ban-dependencies": "off",
+      },
     },
   ],
 ).removeRules(["unicorn/no-empty-file"]);

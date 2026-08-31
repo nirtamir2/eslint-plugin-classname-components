@@ -1,5 +1,5 @@
 import type { TSESTree } from "@typescript-eslint/types";
-import { createComponentAnalyzer } from "./component-analysis";
+import { createComponentAnalyzer, isClassPropName } from "./component-analysis";
 import {
   buildClassNameAttributeText,
   getClassNamePropMergeReplacement,
@@ -24,7 +24,7 @@ function isClassNameAttribute(
 } {
   return (
     node.name.type === "JSXIdentifier" &&
-    node.name.name === "className" &&
+    isClassPropName(node.name.name) &&
     node.value?.type === "JSXExpressionContainer" &&
     node.value.expression != null &&
     node.value.expression.type !== "JSXEmptyExpression"
@@ -37,13 +37,13 @@ export default createEslintRule<Options, MessageIds>({
     type: "problem",
     docs: {
       description:
-        "Disallow merging prop-driven className values into internally styled components",
+        "Disallow merging prop-driven className or class values into internally styled components",
     },
     fixable: "code",
     schema: [],
     messages: {
       forbid:
-        "This internally styled component should not merge prop-driven className values. Move that styling into a variant or another internal styling API.",
+        "This internally styled component should not merge prop-driven `{{prop}}` values. Move that styling into a variant or another internal styling API.",
     },
   },
   defaultOptions: [],
@@ -83,13 +83,16 @@ export default createEslintRule<Options, MessageIds>({
         context.report({
           node: node.value,
           messageId: "forbid",
+          data: {
+            prop: node.name.name,
+          },
           ...(replacement == null
             ? {}
             : {
                 fix: (fixer) => {
                   return fixer.replaceText(
                     node,
-                    buildClassNameAttributeText(replacement),
+                    buildClassNameAttributeText(replacement, node.name.name),
                   );
                 },
               }),

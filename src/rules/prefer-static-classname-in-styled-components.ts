@@ -1,6 +1,6 @@
 import type { TSESTree } from "@typescript-eslint/types";
 import ts from "typescript";
-import { createComponentAnalyzer } from "./component-analysis";
+import { createComponentAnalyzer, isClassPropName } from "./component-analysis";
 import {
   buildClassNameAttributeText,
   getPreferredClassNameReplacement,
@@ -42,7 +42,7 @@ function isClassNameAttribute(
 } {
   return (
     node.name.type === "JSXIdentifier" &&
-    node.name.name === "className" &&
+    isClassPropName(node.name.name) &&
     node.value?.type === "JSXExpressionContainer" &&
     node.value.expression != null &&
     node.value.expression.type !== "JSXEmptyExpression"
@@ -55,13 +55,13 @@ export default createEslintRule<Options, MessageIds>({
     type: "suggestion",
     docs: {
       description:
-        "Prefer plain JSX string literals for fully static className values in internally styled components",
+        "Prefer plain JSX string literals for fully static className or class values in internally styled components",
     },
     fixable: "code",
     schema: [],
     messages: {
       preferStatic:
-        "Prefer plain JSX string literals for static className values and simplify className composition in clsx(...).",
+        "Prefer plain JSX string literals for static `{{prop}}` values and simplify class composition in clsx(...).",
     },
   },
   defaultOptions: [],
@@ -125,10 +125,13 @@ export default createEslintRule<Options, MessageIds>({
         context.report({
           node: node.value,
           messageId: "preferStatic",
+          data: {
+            prop: node.name.name,
+          },
           fix: (fixer) => {
             return fixer.replaceText(
               node,
-              buildClassNameAttributeText(replacement),
+              buildClassNameAttributeText(replacement, node.name.name),
             );
           },
         });

@@ -1,6 +1,9 @@
 import type { TSESTree } from "@typescript-eslint/types";
 
 const CLASSNAME_HELPER_NAMES = new Set(["clsx", "cn"]);
+const CLASS_NAME_SPLIT_REGEX = /\s+/u;
+const TRAILING_WHITESPACE_REGEX = /\s$/u;
+const LEADING_WHITESPACE_REGEX = /^\s/u;
 
 interface TextSourceCode {
   getText: (node?: TSESTree.Node) => string;
@@ -22,7 +25,7 @@ export interface ClassNameReplacement {
 function normalizeClassNameText(text: string): Array<string> {
   return text
     .trim()
-    .split(/\s+/u)
+    .split(CLASS_NAME_SPLIT_REGEX)
     .filter((token) => token.length > 0);
 }
 
@@ -180,8 +183,9 @@ function isWhitespaceDelimitedTemplateLiteral(
     const previousText = previous?.value.cooked ?? previous?.value.raw ?? "";
     const nextText = next?.value.cooked ?? next?.value.raw ?? "";
     return (
-      (previousText.length === 0 || /\s$/u.test(previousText)) &&
-      (nextText.length === 0 || /^\s/u.test(nextText))
+      (previousText.length === 0 ||
+        TRAILING_WHITESPACE_REGEX.test(previousText)) &&
+      (nextText.length === 0 || LEADING_WHITESPACE_REGEX.test(nextText))
     );
   });
 }
@@ -400,10 +404,11 @@ function escapeJsxAttributeString(text: string): string {
 
 export function buildClassNameAttributeText(
   replacement: ClassNameReplacement,
+  attributeName = "className",
 ): string {
   return replacement.kind === "string"
-    ? `className="${escapeJsxAttributeString(replacement.text)}"`
-    : `className={${replacement.text}}`;
+    ? `${attributeName}="${escapeJsxAttributeString(replacement.text)}"`
+    : `${attributeName}={${replacement.text}}`;
 }
 
 export function getStaticClassNameReplacement(

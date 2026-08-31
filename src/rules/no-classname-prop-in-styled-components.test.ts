@@ -34,6 +34,31 @@ const setup = tsx`
   declare function memo<T>(component: T): T;
 `;
 
+const solidSetup = tsx`
+  declare namespace JSX {
+    interface Element {}
+    interface IntrinsicElements {
+      button: {
+        class?: string;
+        disabled?: boolean;
+        type?: "button" | "submit";
+      };
+      div: {
+        class?: string;
+      };
+      span: {
+        class?: string;
+      };
+    }
+  }
+
+  declare function clsx(...values: Array<unknown>): string;
+  declare function cva(
+    base: string,
+    config?: unknown,
+  ): (options?: unknown) => string;
+`;
+
 run({
   name: RULE_NAME,
   rule: noClassnamePropInStyledComponents,
@@ -101,6 +126,33 @@ run({
         }),
       );
     `,
+    tsx`
+      ${solidSetup};
+      type Props = JSX.IntrinsicElements["button"];
+
+      function Button(props: Props) {
+        return <button class={props.class} />;
+      }
+    `,
+    tsx`
+      ${solidSetup};
+      type Props = Omit<JSX.IntrinsicElements["button"], "class"> & {
+        variant?: "primary" | "secondary";
+      };
+
+      const buttonVariants = cva("rounded", {
+        variants: {
+          variant: {
+            primary: "bg-black text-white",
+            secondary: "bg-white text-black",
+          },
+        },
+      });
+
+      function Button(props: Props) {
+        return <button class={buttonVariants({ variant: props.variant })} />;
+      }
+    `,
   ],
   invalid: [
     {
@@ -124,6 +176,10 @@ run({
       errors: [
         {
           messageId: "forbid",
+          data: {
+            name: "Button",
+            prop: "`className`",
+          },
         },
       ],
     },
@@ -143,9 +199,14 @@ run({
       errors: [
         {
           messageId: "forbid",
+          data: {
+            name: "Button",
+            prop: "`className`",
+          },
         },
       ],
     },
+    // prettier-ignore
     {
       name: "destructured className is removed once it is no longer used",
       code: tsx`
@@ -170,17 +231,11 @@ run({
       `,
       output: tsx`
         ${setup};
-        function Button({
-          disabled,
-          ...props
-        }: Omit<
-          {
-            className?: string;
-            disabled?: boolean;
-            type?: "button" | "submit";
-          },
-          "className"
-        >) {
+        function Button({ disabled, ...props }: Omit<{
+          className?: string;
+          disabled?: boolean;
+          type?: "button" | "submit";
+        }, "className">) {
           return (
             <button
               disabled={disabled}
@@ -193,6 +248,10 @@ run({
       errors: [
         {
           messageId: "forbid",
+          data: {
+            name: "Button",
+            prop: "`className`",
+          },
         },
       ],
     },
@@ -219,6 +278,109 @@ run({
       errors: [
         {
           messageId: "forbid",
+          data: {
+            name: "Button",
+            prop: "`className`",
+          },
+        },
+      ],
+    },
+    {
+      name: "string literal internal styles with inherited class props",
+      code: tsx`
+        ${solidSetup};
+        type Props = JSX.IntrinsicElements["button"];
+
+        function Button(props: Props) {
+          return <button class="rounded px-4" />;
+        }
+      `,
+      output: tsx`
+        ${solidSetup};
+        type Props = JSX.IntrinsicElements["button"];
+
+        function Button(props: Omit<Props, "class">) {
+          return <button class="rounded px-4" />;
+        }
+      `,
+      errors: [
+        {
+          messageId: "forbid",
+          data: {
+            name: "Button",
+            prop: "`class`",
+          },
+        },
+      ],
+    },
+    {
+      name: "clsx merge still counts as internal styling for class",
+      code: tsx`
+        ${solidSetup};
+        function Button({
+          class: className,
+        }: {
+          class?: string;
+          disabled?: boolean;
+        }) {
+          return <button class={clsx("rounded", className)} />;
+        }
+      `,
+      errors: [
+        {
+          messageId: "forbid",
+          data: {
+            name: "Button",
+            prop: "`class`",
+          },
+        },
+      ],
+    },
+    {
+      name: "destructured class is removed once it is no longer used",
+      code: tsx`
+        ${solidSetup};
+        type Props = {
+          class?: string;
+          disabled?: boolean;
+          type?: "button" | "submit";
+        };
+
+        function Button({ class: className, disabled, ...props }: Props) {
+          return (
+            <button
+              disabled={disabled}
+              type="button"
+              class={clsx("rounded", disabled && "opacity-50")}
+            />
+          );
+        }
+      `,
+      output: tsx`
+        ${solidSetup};
+        type Props = {
+          class?: string;
+          disabled?: boolean;
+          type?: "button" | "submit";
+        };
+
+        function Button({ disabled, ...props }: Omit<Props, "class">) {
+          return (
+            <button
+              disabled={disabled}
+              type="button"
+              class={clsx("rounded", disabled && "opacity-50")}
+            />
+          );
+        }
+      `,
+      errors: [
+        {
+          messageId: "forbid",
+          data: {
+            name: "Button",
+            prop: "`class`",
+          },
         },
       ],
     },
