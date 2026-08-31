@@ -6,6 +6,15 @@ import ts from "typescript";
 type StyleClassification = "internal" | "passthrough" | "unknown";
 const COMPONENT_NAME_REGEX = /^[A-Z]/;
 const CLASSNAME_HELPER_NAMES = new Set(["clsx", "cn"]);
+const CLASS_PROP_NAMES = ["class", "className"] as const;
+
+export type ClassPropName = (typeof CLASS_PROP_NAMES)[number];
+
+export function isClassPropName(
+  name: string | undefined,
+): name is ClassPropName {
+  return name === "class" || name === "className";
+}
 
 function isInternalLiteralText(text: string): boolean {
   return text.trim().length > 0;
@@ -23,6 +32,7 @@ interface ComponentDefinition {
 
 export interface ComponentAnalysis extends ComponentDefinition {
   exposesClassNameProp: boolean;
+  exposedClassPropNames: Array<ClassPropName>;
   hasInternalStyle: boolean;
 }
 
@@ -276,31 +286,35 @@ function addBindingIdentifierSymbols(
   }
 }
 
-function typeHasClassNameProperty(
+function collectExposedClassPropNames(
   checker: ts.TypeChecker,
   parameter: ts.ParameterDeclaration,
-): boolean {
-  const type = checker.getTypeAtLocation(parameter.name);
-  const apparentType = checker.getApparentType(type);
-  return apparentType.getProperties().some((property) => {
-    return property.getName() === "className";
-  });
-}
+): Array<ClassPropName> {
+  const found = new Set<ClassPropName>();
 
-function hasClassNameBinding(parameter: ts.ParameterDeclaration): boolean {
-  if (!ts.isObjectBindingPattern(parameter.name)) {
-    return false;
+  if (ts.isObjectBindingPattern(parameter.name)) {
+    for (const element of parameter.name.elements) {
+      if (ts.isOmittedExpression(element)) {
+        continue;
+      }
+      const propertyName = getPropertyNameText(
+        element.propertyName ?? element.name,
+      );
+      if (isClassPropName(propertyName)) {
+        found.add(propertyName);
+      }
+    }
   }
 
-  return parameter.name.elements.some((element) => {
-    if (ts.isOmittedExpression(element)) {
-      return false;
+  const type = checker.getTypeAtLocation(parameter.name);
+  for (const property of checker.getApparentType(type).getProperties()) {
+    const name = property.getName();
+    if (isClassPropName(name)) {
+      found.add(name);
     }
-    const propertyName = getPropertyNameText(
-      element.propertyName ?? element.name,
-    );
-    return propertyName === "className";
-  });
+  }
+
+  return CLASS_PROP_NAMES.filter((name) => found.has(name));
 }
 
 function createStyleInspector(
@@ -336,7 +350,7 @@ function createStyleInspector(
         const propertyName = getPropertyNameText(
           element.propertyName ?? element.name,
         );
-        if (propertyName === "className") {
+        if (isClassPropName(propertyName)) {
           addBindingIdentifierSymbols(element.name, checker, classNameSymbols);
         }
       }
@@ -411,7 +425,7 @@ function createStyleInspector(
             const propertyName = getPropertyNameText(
               element.propertyName ?? element.name,
             );
-            if (propertyName === "className") {
+            if (isClassPropName(propertyName)) {
               addBindingIdentifierSymbols(
                 element.name,
                 checker,
@@ -467,7 +481,7 @@ function createStyleInspector(
 
     if (ts.isPropertyAccessExpression(unwrapped)) {
       return (
-        unwrapped.name.text === "className" &&
+        isClassPropName(unwrapped.name.text) &&
         isPropsObjectExpression(unwrapped.expression)
       );
     }
@@ -475,7 +489,7 @@ function createStyleInspector(
     return (
       ts.isElementAccessExpression(unwrapped) &&
       ts.isStringLiteral(unwrapped.argumentExpression) &&
-      unwrapped.argumentExpression.text === "className" &&
+      isClassPropName(unwrapped.argumentExpression.text) &&
       isPropsObjectExpression(unwrapped.expression)
     );
   }
@@ -592,7 +606,7 @@ function createStyleInspector(
           if (
             ts.isJsxAttribute(current) &&
             ts.isIdentifier(current.name) &&
-            current.name.text === "className" &&
+            isClassPropName(current.name.text) &&
             attributeHasInternalStyle(current)
           ) {
             found = true;
@@ -640,12 +654,14 @@ export function createComponentAnalyzer(
     }
 
     const styleInspector = createStyleInspector(checker, component);
+    const exposedClassPropNames =
+      component.propsParameter == null
+        ? []
+        : collectExposedClassPropNames(checker, component.propsParameter);
     const analysis: ComponentAnalysis = {
       ...component,
-      exposesClassNameProp:
-        component.propsParameter != null &&
-        (hasClassNameBinding(component.propsParameter) ||
-          typeHasClassNameProperty(checker, component.propsParameter)),
+      exposesClassNameProp: exposedClassPropNames.length > 0,
+      exposedClassPropNames,
       hasInternalStyle: styleInspector.hasInternalStyle(),
     };
 

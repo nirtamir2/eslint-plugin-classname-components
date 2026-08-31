@@ -1,7 +1,8 @@
 # prefer-static-classname-in-styled-components
 
-Prefer plain JSX string literals for fully static `className` values in
-internally styled components.
+Prefer plain JSX string literals for fully static `className` or `class` values
+in internally styled components. `class` is treated the same as `className`
+(SolidJS). Autofixes keep the original attribute name.
 
 ## Why
 

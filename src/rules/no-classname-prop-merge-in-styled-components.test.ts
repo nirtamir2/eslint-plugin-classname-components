@@ -31,6 +31,32 @@ const setup = tsx`
   ): (options?: unknown) => string;
 `;
 
+const solidSetup = tsx`
+  declare namespace JSX {
+    interface Element {}
+    interface IntrinsicElements {
+      button: {
+        class?: string;
+        disabled?: boolean;
+        type?: "button" | "submit";
+      };
+      div: {
+        class?: string;
+      };
+      span: {
+        class?: string;
+      };
+    }
+  }
+
+  declare function clsx(...values: Array<unknown>): string;
+  declare function cn(...values: Array<unknown>): string;
+  declare function cva(
+    base: string,
+    config?: unknown,
+  ): (options?: unknown) => string;
+`;
+
 run({
   name: RULE_NAME,
   rule: noClassnamePropMergeInStyledComponents,
@@ -70,6 +96,20 @@ run({
         return <button className={props.className} />;
       }
     `,
+    tsx`
+      ${solidSetup};
+      function Button(props: { disabled?: boolean }) {
+        return (
+          <button class={clsx("rounded", props.disabled && "opacity-50")} />
+        );
+      }
+    `,
+    tsx`
+      ${solidSetup};
+      function Button(props: JSX.IntrinsicElements["button"]) {
+        return <button class={props.class} />;
+      }
+    `,
   ],
   invalid: [
     {
@@ -104,6 +144,7 @@ run({
       `,
       errors: [{ messageId: "forbid" }],
     },
+    // prettier-ignore
     {
       name: "button variants call remains after removing className merge",
       code: tsx`
@@ -133,7 +174,9 @@ run({
           className?: string;
           variant?: "primary" | "secondary";
         }) {
-          return <button className={buttonVariants({ variant })} />;
+          return (
+            <button className={buttonVariants({ variant })} />
+          );
         }
       `,
       errors: [{ messageId: "forbid" }],
@@ -149,6 +192,38 @@ run({
               <span className={props.className} />
             </div>
           );
+        }
+      `,
+      errors: [{ messageId: "forbid" }],
+    },
+    {
+      name: "clsx merge drops props.class and keeps the class attribute name",
+      code: tsx`
+        ${solidSetup};
+        function Button(props: { class?: string }) {
+          return <button class={clsx("rounded", props.class)} />;
+        }
+      `,
+      output: tsx`
+        ${solidSetup};
+        function Button(props: { class?: string }) {
+          return <button class="rounded" />;
+        }
+      `,
+      errors: [{ messageId: "forbid" }],
+    },
+    {
+      name: "clsx merge drops renamed class binding and keeps the class attribute name",
+      code: tsx`
+        ${solidSetup};
+        function Button({ class: className }: { class?: string }) {
+          return <button class={clsx("rounded", className)} />;
+        }
+      `,
+      output: tsx`
+        ${solidSetup};
+        function Button({ class: className }: { class?: string }) {
+          return <button class="rounded" />;
         }
       `,
       errors: [{ messageId: "forbid" }],

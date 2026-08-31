@@ -1,13 +1,29 @@
 import type { TSESTree } from "@typescript-eslint/types";
 import type * as TSESLint from "@typescript-eslint/utils/ts-eslint";
 import type { ComponentAnalysis } from "./component-analysis";
-import { createComponentAnalyzer } from "./component-analysis";
+import { createComponentAnalyzer, isClassPropName } from "./component-analysis";
 import { createEslintRule } from "../utils";
 
 export const RULE_NAME = "no-classname-prop-in-styled-components";
 export type MessageIds = "forbid" | "suggestOmit";
 export type Options = [];
-const OMIT_CLASSNAME_REGEX = /^Omit<.*,\s*"className"\s*>$/s;
+const OMIT_CLASS_PROP_REGEX =
+  /^Omit<.*,\s*(?:"class"|"className")(?:\s*\|\s*(?:"class"|"className"))?\s*>$/s;
+
+function toOmitKeysText(names: ReadonlyArray<string>): string {
+  return names.map((name) => JSON.stringify(name)).join(" | ");
+}
+
+function toExposedPropText(names: ReadonlyArray<string>): string {
+  return names.map((name) => `\`${name}\``).join(" or ");
+}
+
+function toOmitClassPropType(
+  typeText: string,
+  names: ReadonlyArray<string>,
+): string {
+  return `Omit<${typeText}, ${toOmitKeysText(names)}>`;
+}
 
 function getTypeAnnotation(
   parameter: TSESTree.Parameter,
@@ -68,7 +84,7 @@ function buildObjectPatternWithoutClassName(
     }
 
     const propertyName = getPropertyNameText(property.key);
-    return propertyName !== "className";
+    return !isClassPropName(propertyName);
   });
 
   if (remainingProperties.length === pattern.properties.length) {
@@ -84,7 +100,7 @@ function buildObjectPatternWithoutClassName(
 
 function buildParameterReplacementText(
   parameter: TSESTree.Parameter,
-  typeText: string,
+  omittedTypeText: string,
   sourceCode: Readonly<TSESLint.SourceCode>,
 ): string | undefined {
   const objectPattern = getObjectPatternTarget(parameter);
@@ -100,7 +116,6 @@ function buildParameterReplacementText(
     return undefined;
   }
 
-  const omittedTypeText = `Omit<${typeText}, "className">`;
   if (parameter.type === "AssignmentPattern") {
     return `${patternText}: ${omittedTypeText} = ${sourceCode.getText(parameter.right)}`;
   }
@@ -110,18 +125,23 @@ function buildParameterReplacementText(
 
 function hasClassNamePropUsage(
   node: TSESTree.Node,
-  sourceCode: Readonly<TSESLint.SourceCode>,
-  analyzer: ReturnType<typeof createComponentAnalyzer>,
-  analysis: ComponentAnalysis,
+  usage: {
+    analysis: ComponentAnalysis;
+    analyzer: ReturnType<typeof createComponentAnalyzer>;
+    sourceCode: Readonly<TSESLint.SourceCode>;
+  },
 ): boolean {
   if (
-    analyzer.services.esTreeNodeToTSNodeMap.has(node) &&
-    analyzer.isClassNamePropExpression(node as TSESTree.Expression, analysis)
+    usage.analyzer.services.esTreeNodeToTSNodeMap.has(node) &&
+    usage.analyzer.isClassNamePropExpression(
+      node as TSESTree.Expression,
+      usage.analysis,
+    )
   ) {
     return true;
   }
 
-  for (const key of sourceCode.visitorKeys[node.type] ?? []) {
+  for (const key of usage.sourceCode.visitorKeys[node.type] ?? []) {
     const value = node[key as keyof TSESTree.Node];
     if (value == null) {
       continue;
@@ -133,12 +153,7 @@ function hasClassNamePropUsage(
           item != null &&
           typeof item === "object" &&
           "type" in item &&
-          hasClassNamePropUsage(
-            item as TSESTree.Node,
-            sourceCode,
-            analyzer,
-            analysis,
-          )
+          hasClassNamePropUsage(item as TSESTree.Node, usage)
         ) {
           return true;
         }
@@ -149,12 +164,7 @@ function hasClassNamePropUsage(
     if (
       typeof value === "object" &&
       "type" in value &&
-      hasClassNamePropUsage(
-        value as TSESTree.Node,
-        sourceCode,
-        analyzer,
-        analysis,
-      )
+      hasClassNamePropUsage(value as TSESTree.Node, usage)
     ) {
       return true;
     }
@@ -163,21 +173,49 @@ function hasClassNamePropUsage(
   return false;
 }
 
+function getOmitClassPropFixes(
+  fixer: TSESLint.RuleFixer,
+  omitFix: {
+    estreeParameter: TSESTree.Parameter | undefined;
+    omittedTypeText: string;
+    parameterReplacementText: string | undefined;
+    typeAnnotation: TSESTree.TSTypeAnnotation;
+  },
+): Array<TSESLint.RuleFix> {
+  if (omitFix.parameterReplacementText == null) {
+    return [
+      fixer.replaceText(
+        omitFix.typeAnnotation.typeAnnotation,
+        omitFix.omittedTypeText,
+      ),
+    ];
+  }
+
+  return omitFix.estreeParameter == null
+    ? []
+    : [
+        fixer.replaceText(
+          omitFix.estreeParameter,
+          omitFix.parameterReplacementText,
+        ),
+      ];
+}
+
 export default createEslintRule<Options, MessageIds>({
   name: RULE_NAME,
   meta: {
     type: "problem",
     docs: {
       description:
-        "Disallow exposing className props from components that already style themselves internally",
+        "Disallow exposing className or class props from components that already style themselves internally",
     },
     fixable: "code",
     hasSuggestions: true,
     schema: [],
     messages: {
       forbid:
-        'Styled component "{{name}}" should not expose a `className` prop. Remove it from the component API and model styling differences with variant props instead.',
-      suggestOmit: 'Wrap the component props type in `Omit<T, "className">`.',
+        'Styled component "{{name}}" should not expose a {{prop}} prop. Remove it from the component API and model styling differences with variant props instead.',
+      suggestOmit: "Wrap the component props type in `Omit<T, {{keys}}>`.",
     },
   },
   defaultOptions: [],
@@ -208,10 +246,14 @@ export default createEslintRule<Options, MessageIds>({
               analysis.propsParameter,
             )) ?? node;
 
-      const suggestions = [];
-      let autofix:
-        | ((fixer: TSESLint.RuleFixer) => ReadonlyArray<TSESLint.RuleFix>)
-        | undefined;
+      const omitReport: {
+        fix?: (fixer: TSESLint.RuleFixer) => ReadonlyArray<TSESLint.RuleFix>;
+        suggest?: Array<{
+          data: { keys: string };
+          fix: (fixer: TSESLint.RuleFixer) => ReadonlyArray<TSESLint.RuleFix>;
+          messageId: "suggestOmit";
+        }>;
+      } = {};
       if (analysis.propsParameter != null) {
         const estreeParameter = analyzer.services.tsNodeToESTreeNodeMap.get(
           analysis.propsParameter,
@@ -225,7 +267,11 @@ export default createEslintRule<Options, MessageIds>({
           const typeText = context.sourceCode.getText(
             typeAnnotation.typeAnnotation,
           );
-          if (!OMIT_CLASSNAME_REGEX.test(typeText)) {
+          if (!OMIT_CLASS_PROP_REGEX.test(typeText)) {
+            const omittedTypeText = toOmitClassPropType(
+              typeText,
+              analysis.exposedClassPropNames,
+            );
             const renderFunctionNode =
               analyzer.services.tsNodeToESTreeNodeMap.get(
                 analysis.renderFunction,
@@ -240,59 +286,37 @@ export default createEslintRule<Options, MessageIds>({
                 ? undefined
                 : buildParameterReplacementText(
                     estreeParameter,
-                    typeText,
+                    omittedTypeText,
                     context.sourceCode,
                   );
+            const applyOmitFix = (fixer: TSESLint.RuleFixer) => {
+              return getOmitClassPropFixes(fixer, {
+                estreeParameter,
+                omittedTypeText,
+                parameterReplacementText,
+                typeAnnotation,
+              });
+            };
 
             if (
               renderBodyNode != null &&
-              !hasClassNamePropUsage(
-                renderBodyNode,
-                context.sourceCode,
-                analyzer,
+              !hasClassNamePropUsage(renderBodyNode, {
                 analysis,
-              )
+                analyzer,
+                sourceCode: context.sourceCode,
+              })
             ) {
-              autofix = (fixer) => {
-                return parameterReplacementText == null
-                  ? [
-                      fixer.replaceText(
-                        typeAnnotation.typeAnnotation,
-                        `Omit<${typeText}, "className">`,
-                      ),
-                    ]
-                  : estreeParameter == null
-                    ? []
-                    : [
-                        fixer.replaceText(
-                          estreeParameter,
-                          parameterReplacementText,
-                        ),
-                      ];
-              };
-            }
-
-            if (autofix == null) {
-              suggestions.push({
-                messageId: "suggestOmit" as const,
-                fix: (fixer: TSESLint.RuleFixer) => {
-                  return parameterReplacementText == null
-                    ? [
-                        fixer.replaceText(
-                          typeAnnotation.typeAnnotation,
-                          `Omit<${typeText}, "className">`,
-                        ),
-                      ]
-                    : estreeParameter == null
-                      ? []
-                      : [
-                          fixer.replaceText(
-                            estreeParameter,
-                            parameterReplacementText,
-                          ),
-                        ];
+              omitReport.fix = applyOmitFix;
+            } else {
+              omitReport.suggest = [
+                {
+                  messageId: "suggestOmit",
+                  data: {
+                    keys: toOmitKeysText(analysis.exposedClassPropNames),
+                  },
+                  fix: applyOmitFix,
                 },
-              });
+              ];
             }
           }
         }
@@ -303,9 +327,12 @@ export default createEslintRule<Options, MessageIds>({
         messageId: "forbid",
         data: {
           name: analysis.name,
+          prop: toExposedPropText(analysis.exposedClassPropNames),
         },
-        ...(autofix == null ? {} : { fix: autofix }),
-        ...(suggestions.length > 0 ? { suggest: suggestions } : {}),
+        ...(omitReport.fix == null ? {} : { fix: omitReport.fix }),
+        ...(omitReport.suggest == null
+          ? {}
+          : { suggest: omitReport.suggest }),
       });
     }
 

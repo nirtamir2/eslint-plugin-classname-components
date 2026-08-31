@@ -31,6 +31,32 @@ const setup = tsx`
   ): (options?: unknown) => string;
 `;
 
+const solidSetup = tsx`
+  declare namespace JSX {
+    interface Element {}
+    interface IntrinsicElements {
+      button: {
+        class?: string;
+        disabled?: boolean;
+        type?: "button" | "submit";
+      };
+      div: {
+        class?: string;
+      };
+      span: {
+        class?: string;
+      };
+    }
+  }
+
+  declare function clsx(...values: Array<unknown>): string;
+  declare function cn(...values: Array<unknown>): string;
+  declare function cva(
+    base: string,
+    config?: unknown,
+  ): (options?: unknown) => string;
+`;
+
 run({
   name: RULE_NAME,
   rule: preferStaticClassnameInStyledComponents,
@@ -80,6 +106,20 @@ run({
       ${setup};
       function Button(props: { sizeClass: string }) {
         return <button className={\`size-\${props.sizeClass}\`} />;
+      }
+    `,
+    tsx`
+      ${solidSetup};
+      function Button() {
+        return <button class="rounded px-4" />;
+      }
+    `,
+    tsx`
+      ${solidSetup};
+      function Button(props: { disabled?: boolean }) {
+        return (
+          <button class={clsx("rounded", props.disabled && "opacity-50")} />
+        );
       }
     `,
   ],
@@ -220,6 +260,7 @@ run({
       `,
       errors: [{ messageId: "preferStatic" }],
     },
+    // prettier-ignore
     {
       name: "clsx empty-string ternary becomes logical and",
       code: tsx`
@@ -237,13 +278,14 @@ run({
         function Button(props: { disabled?: boolean }) {
           return (
             <button
-              className={clsx("rounded", props.disabled && "opacity-50")}
+              className={clsx("rounded", (props.disabled) && "opacity-50")}
             />
           );
         }
       `,
       errors: [{ messageId: "preferStatic" }],
     },
+    // prettier-ignore
     {
       name: "whitespace-delimited template literal becomes clsx call",
       code: tsx`
@@ -261,13 +303,14 @@ run({
         function Button(props: { disabled?: boolean }) {
           return (
             <button
-              className={clsx("rounded px-4", props.disabled && "opacity-50")}
+              className={clsx("rounded px-4", (props.disabled) && "opacity-50")}
             />
           );
         }
       `,
       errors: [{ messageId: "preferStatic" }],
     },
+    // prettier-ignore
     {
       name: "template literal variable becomes clsx call",
       code: tsx`
@@ -281,9 +324,39 @@ run({
         ${setup};
         function Button(props: { toneClassName: string }) {
           const buttonClassName = \`rounded px-4 \${props.toneClassName}\`;
-          return (
-            <button className={clsx("rounded px-4", props.toneClassName)} />
-          );
+          return <button className={clsx("rounded px-4", props.toneClassName)} />;
+        }
+      `,
+      errors: [{ messageId: "preferStatic" }],
+    },
+    {
+      name: "clsx static arguments on class collapse into a class string literal",
+      code: tsx`
+        ${solidSetup};
+        function Button() {
+          return <button class={clsx("rounded", "px-4")} />;
+        }
+      `,
+      output: tsx`
+        ${solidSetup};
+        function Button() {
+          return <button class="rounded px-4" />;
+        }
+      `,
+      errors: [{ messageId: "preferStatic" }],
+    },
+    {
+      name: "string literal wrapper on class becomes jsx string literal",
+      code: tsx`
+        ${solidSetup};
+        function Button() {
+          return <button class={"rounded px-4"} />;
+        }
+      `,
+      output: tsx`
+        ${solidSetup};
+        function Button() {
+          return <button class="rounded px-4" />;
         }
       `,
       errors: [{ messageId: "preferStatic" }],
